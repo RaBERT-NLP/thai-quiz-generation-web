@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { makeStyles } from "@material-ui/core/styles";
+import React, { useState } from "react";
+import axios from "axios";
+import { makeStyles, withStyles } from "@material-ui/core/styles";
 import AppBar from "@material-ui/core/AppBar";
 import Toolbar from "@material-ui/core/Toolbar";
 import Typography from "@material-ui/core/Typography";
@@ -8,6 +9,7 @@ import Divider from "@material-ui/core/Divider";
 import TextField from "@material-ui/core/TextField";
 import IconButton from "@material-ui/core/IconButton";
 import MenuIcon from "@material-ui/icons/Menu";
+import CircularProgress from "@material-ui/core/CircularProgress";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -21,11 +23,21 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
+const DarkerDisabledTextField = withStyles({
+  root: {
+    marginRight: 8,
+    "& .MuiInputBase-root.Mui-disabled": {
+      color: "black", // (default alpha is 0.38)
+    },
+  },
+})(TextField);
+
 export default function App() {
   const classes = useStyles();
-  const [articleText, setArticleText] = useState("")
-  const [linkText, setLinkText] = useState("")
-  const [questions, setQuestions] = useState("")
+  const [articleText, setArticleText] = useState("");
+  const [linkText, setLinkText] = useState("");
+  const [questions, setQuestions] = useState("");
+  const [isWaiting, setIsWaiting] = useState(false);
 
   const handleArticleTextChanged = (e) => {
     setArticleText(e.target.value);
@@ -35,13 +47,40 @@ export default function App() {
     setLinkText(e.target.value);
   };
 
+  const getQuestion = (newText) => {
+    axios
+      .post(
+        `http://ec2-122-248-219-21.ap-southeast-1.compute.amazonaws.com:8000/question/`,
+        { text: newText }
+      )
+      .then((res) => {
+        const data = res.data.data;
+        const choiceName = ["ก", "ข", "ค", "ง"];
+        var newQuestion = "";
+        newQuestion += data.question + "\n";
+        for (var idx = 0; idx < data.choices.length; idx++) {
+          newQuestion +=
+            "\t " + choiceName[idx] + ". " + data.choices[idx] + "\n";
+        }
+        newQuestion +=
+          "ตอบ " + choiceName[data.answer_index] + ". " + data.answer + "\n";
+        setQuestions(newQuestion);
+        setIsWaiting(false);
+      })
+      .catch((error) => {
+        setIsWaiting(false);
+        setQuestions(error.response.data.message);
+      });
+  };
+
   const handleSubmitArticle = async (e) => {
+    setIsWaiting(true);
+    await getQuestion(articleText);
+    setArticleText("");
+    setQuestions("");
+  };
 
-  }
-
-  const handleSubmitLink = async (e) => {
-    
-  }
+  const handleSubmitLink = async (e) => {};
 
   return (
     <div className={classes.root}>
@@ -79,8 +118,10 @@ export default function App() {
         <Divider light style={{ margin: "1rem" }} />
         <div style={{ paddingInline: "10rem" }}>
           <Typography variant="body1" color="textPrimary" component="p">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce vehicula aliquet ultrices. Quisque justo ipsum, 
-          ullamcorper nec est sit amet, volutpat eleifend ante. Curabitur lobortis lorem at ex eleifend commodo.
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce
+            vehicula aliquet ultrices. Quisque justo ipsum, ullamcorper nec est
+            sit amet, volutpat eleifend ante. Curabitur lobortis lorem at ex
+            eleifend commodo.
           </Typography>
         </div>
         <div
@@ -88,7 +129,7 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             flexDirection: "column",
-            marginTop: "1rem"
+            marginTop: "1rem",
           }}
         >
           <TextField
@@ -110,7 +151,11 @@ export default function App() {
               marginTop: "1rem",
             }}
           >
-            <Button variant="contained" color="primary" onClick={handleSubmitArticle}>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmitArticle}
+            >
               Submit
             </Button>
           </div>
@@ -128,7 +173,7 @@ export default function App() {
             display: "flex",
             justifyContent: "center",
             marginBlock: "2rem",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
           <TextField
@@ -140,42 +185,41 @@ export default function App() {
             value={linkText}
             onChange={handleLinkTextChanged}
           />
-            <Button
-              variant="contained"
-              color="primary"
-              style={{ marginLeft: "2rem" }}
-              onClick={handleSubmitLink}
-            >
-              Submit
-            </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            style={{ marginLeft: "2rem" }}
+            onClick={handleSubmitLink}
+          >
+            Submit
+          </Button>
         </div>
         <Divider light style={{ margin: "1rem" }} />
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            flexDirection: "column",
-            marginTop: "2rem"
+            position: "relative",
+            marginTop: "2rem",
           }}
         >
-          <TextField
+          {isWaiting && (
+            <CircularProgress
+              style={{
+                position: "absolute",
+                top: "30%",
+                left: "50%",
+              }}
+            />
+          )}
+          <DarkerDisabledTextField
             id="filled-multiline-static"
             multiline
             disabled
+            rows={4}
             rowsMax={9}
-            defaultValue="Hello World"
+            value={questions}
             variant="outlined"
-            style={{ width: "80%" }}
+            style={{ width: "80%", top: "0", left: "10%", color: "black" }}
           />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              width: "80%",
-              marginTop: "1rem",
-            }}
-          >
-          </div>
         </div>
       </div>
     </div>
