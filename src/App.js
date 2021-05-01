@@ -49,27 +49,76 @@ export default function App() {
 
   const getQuestion = (newText) => {
     axios
-      .post(
-        `http://ec2-122-248-219-21.ap-southeast-1.compute.amazonaws.com:8000/question/`,
-        { text: newText }
-      )
+      .post(`http://ec2-122-248-219-21.ap-southeast-1.compute.amazonaws.com:8000/questions_text/`, { text: newText, limit: 5 })
       .then((res) => {
-        const data = res.data.data;
+        const questionSet = res.data.data;
+        if (questionSet.length === 0) {
+          setQuestions("Unable to generate the question, maybe the article is too short.");
+          setIsWaiting(false);
+          return
+        }
         const choiceName = ["ก", "ข", "ค", "ง"];
         var newQuestion = "";
-        newQuestion += data.question + "\n";
-        for (var idx = 0; idx < data.choices.length; idx++) {
+        for (var i = 0; i < questionSet.length; i++) {
+          newQuestion += questionSet[i].question + "\n";
+          for (var idx = 0; idx < questionSet[i].choices.length; idx++) {
+            newQuestion +=
+              "\t " +
+              choiceName[idx] +
+              ". " +
+              questionSet[i].choices[idx] +
+              "\n";
+          }
           newQuestion +=
-            "\t " + choiceName[idx] + ". " + data.choices[idx] + "\n";
+            "ตอบ " +
+            choiceName[questionSet[i].answer_idx] +
+            ". " +
+            questionSet[i].answer +
+            "\n";
+          newQuestion += "\n";
         }
-        newQuestion +=
-          "ตอบ " + choiceName[data.answer_index] + ". " + data.answer + "\n";
+
         setQuestions(newQuestion);
         setIsWaiting(false);
       })
       .catch((error) => {
         setIsWaiting(false);
         setQuestions(error.response.data.message);
+      });
+  };
+
+  const getQuestionFromLink = (newText) => {
+    axios
+      .post(`http://ec2-122-248-219-21.ap-southeast-1.compute.amazonaws.com:8000/questions_url/`, { url: newText, limit: 5 })
+      .then((res) => {
+        const questionSet = res.data.data;
+        const choiceName = ["ก", "ข", "ค", "ง"];
+        var newQuestion = "";
+        for (var i = 0; i < questionSet.length; i++) {
+          newQuestion += questionSet[i].question + "\n";
+          for (var idx = 0; idx < questionSet[i].choices.length; idx++) {
+            newQuestion +=
+              "\t " +
+              choiceName[idx] +
+              ". " +
+              questionSet[i].choices[idx] +
+              "\n";
+          }
+          newQuestion +=
+            "ตอบ " +
+            choiceName[questionSet[i].answer_idx] +
+            ". " +
+            questionSet[i].answer +
+            "\n";
+          newQuestion += "\n";
+        }
+
+        setQuestions(newQuestion);
+        setIsWaiting(false);
+      })
+      .catch((error) => {
+        setIsWaiting(false);
+        setQuestions("");
       });
   };
 
@@ -80,7 +129,12 @@ export default function App() {
     setQuestions("");
   };
 
-  const handleSubmitLink = async (e) => {};
+  const handleSubmitLink = async (e) => {
+    setIsWaiting(true);
+    await getQuestionFromLink(linkText);
+    setLinkText("");
+    setQuestions("");
+  };
 
   return (
     <div className={classes.root}>
@@ -215,7 +269,7 @@ export default function App() {
             multiline
             disabled
             rows={4}
-            rowsMax={9}
+            rowsMax={100}
             value={questions}
             variant="outlined"
             style={{ width: "80%", top: "0", left: "10%", color: "black" }}
