@@ -11,7 +11,7 @@ npm install
 
 ## Run the project
 
-Run the command below:
+Run the command below (run on port 3000):
 ```
 npm start
 ```
